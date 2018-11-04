@@ -17,17 +17,20 @@ import io.ktor.response.respond
 import io.ktor.response.respondText
 import io.ktor.routing.get
 import io.ktor.routing.routing
+import kotlinx.coroutines.newFixedThreadPoolContext
+import kotlinx.coroutines.withContext
 import kotlinx.css.*
 import kotlinx.html.*
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
+import ro.razvan.server.collegeBalanceManager.DatabaseFactory.dbQuery
 import ro.razvan.server.collegeBalanceManager.data.movements.Movements
 import ro.razvan.server.collegeBalanceManager.data.outgoings.Outgoings
 import ro.razvan.server.collegeBalanceManager.data.payments.Payments
+import ro.razvan.server.collegeBalanceManager.data.users.User
 import ro.razvan.server.collegeBalanceManager.data.users.Users
+import kotlin.coroutines.CoroutineContext
 
 fun main(args: Array<String>) =
     io.ktor.server.netty.DevelopmentEngine.main(args)
@@ -48,6 +51,8 @@ fun Application.module(testing: Boolean = false) {
     initDb()
     transaction {
         SchemaUtils.create(Users, Payments, Movements, Outgoings)
+
+        Users.deleteAll()
 
         Users.insert {
             it[username] = "razvanred99"
@@ -74,6 +79,10 @@ fun Application.module(testing: Boolean = false) {
                     }
                 }
             }
+        }
+
+        get("/users") {
+            call.respond(getAllUsers())
         }
 
         get("/styles.css") {
@@ -142,3 +151,27 @@ suspend inline fun ApplicationCall.respondCss(builder: CSSBuilder.() -> Unit) {
 fun initDb() {
     Database.connect("jdbc:mysql://localhost:3306/CollegeBalanceDB", "com.mysql.cj.jdbc.Driver", "root", "")
 }
+
+object DatabaseFactory {
+
+    private val dispatcher: CoroutineContext
+
+    suspend fun <T> dbQuery(
+        block: () -> T
+    ): T =
+        withContext(dispatcher) {
+            transaction { block() }
+        }
+
+    init {
+        dispatcher = newFixedThreadPoolContext(5, "database-pool")
+    }
+
+}
+
+suspend fun getAllUsers(): List<User> = dbQuery {
+    Users.selectAll().map(::toUser)
+}
+
+private fun toUser(row: ResultRow) =
+    User(row[Users.id].value, row[Users.username], row[Users.firstName], row[Users.lastName])
