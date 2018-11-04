@@ -1,6 +1,8 @@
-package ro.razvan.server.collegeBalanceManager.data.tables
+package ro.razvan.server.collegeBalanceManager.data.movements
 
 import org.jetbrains.exposed.dao.IntIdTable
+import ro.razvan.server.collegeBalanceManager.data.payments.Payments
+import ro.razvan.server.collegeBalanceManager.data.users.Users
 
 object Movements : IntIdTable() {
     val userIdFrom = reference("UserIdFrom", Users)

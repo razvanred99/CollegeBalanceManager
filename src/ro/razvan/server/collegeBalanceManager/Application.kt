@@ -21,29 +21,41 @@ import kotlinx.css.*
 import kotlinx.html.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import ro.razvan.server.collegeBalanceManager.data.tables.Movements
-import ro.razvan.server.collegeBalanceManager.data.tables.Outgoings
-import ro.razvan.server.collegeBalanceManager.data.tables.Payments
-import ro.razvan.server.collegeBalanceManager.data.tables.Users
+import org.mindrot.jbcrypt.BCrypt
+import ro.razvan.server.collegeBalanceManager.data.movements.Movements
+import ro.razvan.server.collegeBalanceManager.data.outgoings.Outgoings
+import ro.razvan.server.collegeBalanceManager.data.payments.Payments
+import ro.razvan.server.collegeBalanceManager.data.users.Users
 
-fun main(args: Array<String>) {
-    initDb()
-    transaction {
-        SchemaUtils.create(Users, Payments, Movements, Outgoings)
-    }
+fun main(args: Array<String>) =
     io.ktor.server.netty.DevelopmentEngine.main(args)
-}
+
 
 @Suppress("unused") // Referenced in application.conf
 @kotlin.jvm.JvmOverloads
 fun Application.module(testing: Boolean = false) {
+
     install(Locations) {
     }
 
     install(ContentNegotiation) {
         gson {
         }
+    }
+
+    initDb()
+    transaction {
+        SchemaUtils.create(Users, Payments, Movements, Outgoings)
+
+        Users.insert {
+            it[username] = "razvanred99"
+            it[password] = BCrypt.hashpw("helloWorld", BCrypt.gensalt())
+            it[firstName] = "Razvan"
+            it[lastName] = "Rosu"
+        }
+
     }
 
     routing {
@@ -83,6 +95,7 @@ fun Application.module(testing: Boolean = false) {
             resources("static")
         }
 
+        //access /location/{name}
         get<MyLocation> {
             call.respondText("Location: name=${it.name}, arg1=${it.arg1}, arg2=${it.arg2}")
         }
@@ -127,6 +140,5 @@ suspend inline fun ApplicationCall.respondCss(builder: CSSBuilder.() -> Unit) {
 }
 
 fun initDb() {
-    val url =
-        Database.connect("jdbc:mysql://localhost:3306/CollegeBalanceDB", "com.mysql.cj.jdbc.Driver", "root", "")
+    Database.connect("jdbc:mysql://localhost:3306/CollegeBalanceDB", "com.mysql.cj.jdbc.Driver", "root", "")
 }

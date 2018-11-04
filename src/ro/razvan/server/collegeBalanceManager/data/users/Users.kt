@@ -1,4 +1,4 @@
-package ro.razvan.server.collegeBalanceManager.data.tables
+package ro.razvan.server.collegeBalanceManager.data.users
 
 import org.jetbrains.exposed.dao.IntIdTable
 
